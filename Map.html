@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Provider Map View | Network Optimizer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.8.0/dist/leaflet.css" />
+    <style>
+        :root {
+            --primary-color: #088395;
+            --secondary-color: #0A4D68;
+            --accent-color: #ff6f61;
+            --text-color: #34495e;
+            --light-bg: #f8f9fa;
+            --white-color: #ffffff;
+            --border-color: #e0e0e0;
+            --shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+            --font-family: 'Poppins', sans-serif;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: var(--font-family); line-height: 1.6; color: var(--text-color); background-color: var(--light-bg); display: flex; flex-direction: column; min-height: 100vh; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 0 20px; }
+        .header { background: var(--white-color); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05); position: sticky; top: 0; z-index: 1000; padding: 1rem 0; }
+        .navbar { display: flex; justify-content: space-between; align-items: center; }
+        .nav-logo { font-size: 1.8rem; font-weight: 700; color: var(--secondary-color); text-decoration: none; }
+        .nav-logo i { color: var(--primary-color); }
+        .nav-links { display: flex; gap: 1.5rem; }
+        .nav-link { text-decoration: none; color: var(--text-color); font-weight: 500; }
+        .nav-link:hover { color: var(--primary-color); }
+        .main-content { display: flex; flex: 1; }
+        .filter-sidebar { width: 320px; background: var(--white-color); padding: 2rem; box-shadow: 2px 0 10px rgba(0,0,0,0.05); display: flex; flex-direction: column; }
+        .filter-sidebar h2 { font-size: 1.5rem; margin-bottom: 2rem; border-bottom: 2px solid var(--border-color); padding-bottom: 1rem; }
+        .filter-group { margin-bottom: 1.5rem; }
+        .filter-group label { display: block; font-weight: 600; margin-bottom: 0.75rem; font-size: 1.1rem; }
+        .filter-group select, .filter-group input { width: 100%; padding: 12px; border-radius: 6px; border: 1px solid #ccc; font-family: var(--font-family); font-size: 1rem; background-color: #f9f9f9; }
+        .filter-group select:focus, .filter-group input:focus { outline: none; border-color: var(--primary-color); }
+        .report-section { margin-top: auto; border-top: 2px solid var(--border-color); padding-top: 1.5rem; }
+        .btn { display: inline-block; width: 100%; text-align: center; padding: 14px 32px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; font-size: 1rem; text-decoration: none; }
+        .btn-primary { background-color: var(--accent-color); color: var(--white-color); }
+        .btn-primary:hover { background-color: #e65a50; }
+        .map-container { flex: 1; position: relative; }
+        #map { width: 100%; height: 100%; }
+        .loading-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(255, 255, 255, 0.85); z-index: 1100; display: flex; flex-direction: column; justify-content: center; align-items: center; opacity: 0; visibility: hidden; transition: opacity 0.2s ease, visibility 0.2s ease; }
+        .loading-overlay.show { opacity: 1; visibility: visible; }
+        .loading-overlay .spinner { border: 6px solid #f3f3f3; border-top: 6px solid var(--primary-color); border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin-bottom: 1rem; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .loading-overlay p { font-weight: 500; font-size: 1.1rem; color: var(--secondary-color); }
+        .leaflet-popup-content-wrapper { border-radius: 8px; }
+        .leaflet-popup-content { font-family: var(--font-family); }
+        .leaflet-popup-content h3 { margin: 0 0 10px 0; font-size: 1.2rem; color: var(--secondary-color); }
+        .leaflet-popup-content p { margin: 5px 0; color: var(--text-color); }
+        .leaflet-popup-content strong { color: var(--secondary-color); }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <nav class="navbar">
+                <a href="/" class="nav-logo"><i class="fas fa-network-wired"></i> Optimizer</a>
+                <div class="nav-links">
+                    <a href="/" class="nav-link">Home</a>
+                    <a href="/dashboard" class="nav-link">Dashboard</a>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <aside class="filter-sidebar">
+            <h2>Filter Providers</h2>
+            <div id="filters">
+                <div class="filter-group">
+                    <label for="filter-specialty">Specialty</label>
+                    <select id="filter-specialty"></select>
+                </div>
+                <div class="filter-group">
+                    <label for="filter-state">State</label>
+                    <select id="filter-state"></select>
+                </div>
+                <div class="filter-group">
+                    <label for="filter-rating">Min Patient Rating</label>
+                    <select id="filter-rating">
+                        <option value="0">Any Rating</option>
+                        <option value="4.5">4.5 Stars & Up</option>
+                        <option value="4">4 Stars & Up</option>
+                        <option value="3.5">3.5 Stars & Up</option>
+                        <option value="3">3 Stars & Up</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filter-drive-time">Max Drive Time</label>
+                    <select id="filter-drive-time" disabled>
+                        <option value="9999">Enable Location...</option>
+                        <option value="15">Within 15 mins</option>
+                        <option value="30">Within 30 mins</option>
+                        <option value="60">Within 60 mins</option>
+                        <option value="90">Within 90 mins</option>
+                    </select>
+                </div>
+            </div>
+            <div class="report-section">
+                 <button id="generateReportBtn" class="btn btn-primary">Generate Report</button>
+            </div>
+        </aside>
+
+        <section class="map-container">
+            <div id="map"></div>
+            <div id="loadingOverlay" class="loading-overlay show">
+                <div class="spinner"></div>
+                <p>Loading provider data...</p>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://unpkg.com/leaflet@1.8.0/dist/leaflet.js"></script>
+    <script>
+        let allProviders = [];
+        let currentFilteredProviders = [];
+        let markers = [];
+        let userLocation = null;
+
+        const map = L.map('map').setView([40.7128, -74.0060], 5);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
+
+        const specialtyFilter = document.getElementById('filter-specialty');
+        const stateFilter = document.getElementById('filter-state');
+        const ratingFilter = document.getElementById('filter-rating');
+        const driveTimeFilter = document.getElementById('filter-drive-time');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const reportBtn = document.getElementById('generateReportBtn');
+
+        async function initializeApp() {
+            getUserLocation();
+            try {
+                const response = await fetch('/api/get-all-providers');
+                if (!response.ok) throw new Error('Network response was not ok');
+                allProviders = await response.json();
+                populateFilters();
+                applyFilters();
+            } catch (error) {
+                console.error("Failed to fetch provider data:", error);
+                loadingOverlay.innerHTML = "<p>Could not load provider data. Please try again later.</p>";
+            }
+        }
+
+        function getUserLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(position => {
+                    userLocation = {
+                        lat: position.coords.latitude,
+                        lon: position.coords.longitude
+                    };
+                    driveTimeFilter.disabled = false;
+                    driveTimeFilter.options[0].value = "9999";
+                    driveTimeFilter.options[0].textContent = "Any Distance";
+
+                    const userIcon = L.icon({ iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png', shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png', iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41] });
+                    L.marker([userLocation.lat, userLocation.lon], { icon: userIcon })
+                        .addTo(map)
+                        .bindPopup("<b>Your Location</b>")
+                        .openPopup();
+                }, () => {
+                    driveTimeFilter.options[0].textContent = "Location Denied";
+                    console.log("User denied geolocation.");
+                });
+            } else {
+                driveTimeFilter.options[0].textContent = "Location N/A";
+                console.log("Geolocation is not supported by this browser.");
+            }
+        }
+
+        function populateFilters() {
+            const specialties = [...new Set(allProviders.map(p => p.specialty))].sort();
+            specialtyFilter.innerHTML = '<option value="all">All Specialties</option>';
+            specialties.forEach(s => {
+                if (s) {
+                    const option = document.createElement('option');
+                    option.value = s;
+                    option.textContent = s;
+                    specialtyFilter.appendChild(option);
+                }
+            });
+
+            const states = [...new Set(allProviders.map(p => p.state))].sort();
+            stateFilter.innerHTML = '<option value="all">All States</option>';
+            states.forEach(s => {
+                if(s) {
+                    const option = document.createElement('option');
+                    option.value = s;
+                    option.textContent = s;
+                    stateFilter.appendChild(option);
+                }
+            });
+        }
+
+        function calculateDistanceKm(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Radius of the Earth in km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a =
+                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
+        function applyFilters() {
+            loadingOverlay.classList.add('show');
+            setTimeout(() => {
+                const selectedSpecialty = specialtyFilter.value;
+                const selectedState = stateFilter.value;
+                const selectedRating = parseFloat(ratingFilter.value);
+                const maxDriveTime = parseInt(driveTimeFilter.value);
+
+                currentFilteredProviders = allProviders.filter(p => {
+                    const specialtyMatch = selectedSpecialty === 'all' || p.specialty === selectedSpecialty;
+                    const stateMatch = selectedState === 'all' || p.state === selectedState;
+                    const ratingMatch = p.patient_rating >= selectedRating;
+
+                    let driveTimeMatch = true;
+                    if (userLocation && maxDriveTime !== 9999) {
+                        if (p.latitude && p.longitude) {
+                            const distKm = calculateDistanceKm(userLocation.lat, userLocation.lon, p.latitude, p.longitude);
+                            const avg_speed_kmh = 50; // Match backend assumption
+                            const driveTimeMinutes = (distKm / avg_speed_kmh) * 60;
+                            driveTimeMatch = driveTimeMinutes <= maxDriveTime;
+                        } else {
+                            driveTimeMatch = false; // Cannot calculate if provider has no location
+                        }
+                    }
+
+                    return specialtyMatch && stateMatch && ratingMatch && driveTimeMatch;
+                });
+                renderMarkers(currentFilteredProviders);
+                loadingOverlay.classList.remove('show');
+            }, 300);
+        }
+
+        function renderMarkers(providersToRender) {
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+            if (providersToRender.length === 0) return;
+            const markerBounds = [];
+            providersToRender.forEach(p => {
+                if (typeof p.latitude === 'number' && typeof p.longitude === 'number') {
+                    const marker = L.marker([p.latitude, p.longitude]).addTo(map);
+                    const popupContent = `
+                        <h3>${p.name}</h3>
+                        <p><strong>Specialty:</strong> ${p.specialty}</p>
+                        <p><strong>Rating:</strong> ${p.patient_rating} / 5.0</p>
+                        <p><strong>Address:</strong> ${p.address}, ${p.city}</p>
+                    `;
+                    marker.bindPopup(popupContent);
+                    markers.push(marker);
+                    markerBounds.push([p.latitude, p.longitude]);
+                }
+            });
+            if (markerBounds.length > 0) {
+                map.fitBounds(markerBounds, { padding: [50, 50] });
+            }
+        }
+
+        function generateReport() {
+            if (currentFilteredProviders.length === 0) {
+                alert("No providers to report. Please adjust your filters.");
+                return;
+            }
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Name,Specialty,Rating,Address,City,State\r\n";
+            currentFilteredProviders.forEach(p => {
+                const row = `"${p.name}","${p.specialty}",${p.patient_rating},"${p.address}","${p.city}","${p.state}"`;
+                csvContent += row + "\r\n";
+            });
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "provider_report.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        specialtyFilter.addEventListener('change', applyFilters);
+        stateFilter.addEventListener('change', applyFilters);
+        ratingFilter.addEventListener('change', applyFilters);
+        driveTimeFilter.addEventListener('change', applyFilters);
+        reportBtn.addEventListener('click', generateReport);
+
+        initializeApp();
+    </script>
+</body>
+</html>

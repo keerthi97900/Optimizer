@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Provider Suggestions | Network Optimizer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.8.0/dist/leaflet.css" />
+    <style>
+        :root {
+            --primary-color: #088395;
+            --secondary-color: #0A4D68;
+            --accent-color: #ff6f61;
+            --text-color: #34495e;
+            --light-bg: #f8f9fa;
+            --white-color: #ffffff;
+            --border-color: #e0e0e0;
+            --shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+            --font-family: 'Poppins', sans-serif;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body { font-family: var(--font-family); line-height: 1.7; color: var(--text-color); background-color: var(--light-bg); }
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+        h1, h2, h3 { font-weight: 600; line-height: 1.2; color: var(--secondary-color); }
+        .header { background: var(--white-color); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05); position: sticky; top: 0; z-index: 1000; padding: 1rem 0; }
+        .navbar { display: flex; justify-content: space-between; align-items: center; }
+        .nav-logo { font-size: 1.8rem; font-weight: 700; color: var(--secondary-color); text-decoration: none; }
+        .nav-logo i { color: var(--primary-color); }
+        .nav-right { display: flex; gap: 1.5rem; }
+        .nav-link { text-decoration: none; color: var(--text-color); font-weight: 500; }
+        .nav-link:hover { color: var(--primary-color); }
+        .member-input-section { padding: 80px 0; text-align: center; background: var(--white-color); }
+        .member-input-section h1 { font-size: 2.8rem; margin-bottom: 1rem; }
+        .member-input-section p { font-size: 1.1rem; max-width: 600px; margin: 0 auto 2.5rem auto; color: #7f8c8d; }
+        .input-box { display: flex; justify-content: center; gap: 10px; max-width: 500px; margin: 0 auto; background-color: var(--white-color); padding: 10px; border-radius: 12px; box-shadow: var(--shadow); }
+        .input-box input { width: 100%; border: none; padding: 15px; font-size: 1rem; font-family: var(--font-family); border-radius: 8px; background: var(--light-bg); }
+        .input-box input:focus { outline: none; box-shadow: 0 0 0 2px var(--primary-color); }
+        .btn { display: inline-block; padding: 14px 32px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; font-size: 1rem; text-decoration: none; white-space: nowrap; }
+        .btn-primary { background-color: var(--accent-color); color: var(--white-color); }
+        .btn-primary:hover { background-color: #e65a50; transform: translateY(-3px); box-shadow: 0 4px 15px rgba(255, 111, 97, 0.4); }
+        .results-section { padding: 60px 0 80px 0; background-color: var(--light-bg); }
+        .results-section h2 { text-align: center; font-size: 2.5rem; margin-bottom: 3rem; }
+        .map-view-container { margin-bottom: 3rem; }
+        #map { width: 100%; height: 500px; border-radius: 12px; box-shadow: var(--shadow); z-index: 1; }
+        .provider-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 1.5rem; }
+        .provider-card { background-color: var(--white-color); border-radius: 12px; box-shadow: var(--shadow); padding: 1.5rem; border: 1px solid var(--border-color); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+        .provider-card:hover { transform: translateY(-5px); box-shadow: 0 8px 25px rgba(0,0,0,0.1); }
+        .provider-card h3 { font-size: 1.3rem; color: var(--primary-color); margin-bottom: 0.5rem; }
+        .provider-card .specialty { font-weight: 500; color: var(--secondary-color); margin-bottom: 1rem; display: block; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; font-size: 0.95rem; }
+        .info-item { display: flex; align-items: center; gap: 8px; color: #555; }
+        .info-item i { color: var(--primary-color); width: 18px; text-align: center; }
+        .info-item b { font-weight: 600; }
+        .how-it-works-section { padding: 80px 0; background-color: var(--white-color); }
+        .how-it-works-section h2 { text-align: center; font-size: 2.5rem; margin-bottom: 4rem; }
+        .steps-container { display: flex; justify-content: space-between; align-items: flex-start; gap: 1.5rem; }
+        .step-card { flex: 1; text-align: center; position: relative; }
+        .step-icon { width: 90px; height: 90px; margin: 0 auto 1.5rem auto; background-color: var(--white-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px solid var(--primary-color); transition: all 0.3s ease; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .step-icon i { font-size: 2.5rem; color: var(--primary-color); transition: all 0.3s ease; }
+        .step-card:hover .step-icon { background-color: var(--primary-color); }
+        .step-card:hover .step-icon i { color: var(--white-color); }
+        .step-card h3 { margin-bottom: 0.5rem; font-size: 1.3rem; }
+        .step-card p { font-size: 0.95rem; color: #7f8c8d; padding: 0 10px; }
+        .step-arrow { display: flex; align-items: center; flex-grow: 1; margin: 0 1rem; margin-top: 45px; height: 3px; background: linear-gradient(90deg, #ccc, #ccc 50%, transparent 50%, transparent 100%); background-size: 10px 3px; }
+        .footer { background-color: var(--secondary-color); color: #a7c4cc; padding: 50px 0 20px 0; }
+        .footer-bottom { text-align: center; border-top: 1px solid #3a6b80; padding-top: 1.5rem; font-size: 0.9rem; }
+
+        /* Modal Styles */
+        .modal-overlay { position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s ease; }
+        .modal-overlay.show { opacity: 1; visibility: visible; }
+        .modal-overlay .modal-content { background-color: var(--white-color); padding: 2rem 3rem; border-radius: 12px; text-align: center; box-shadow: 0 5px 25px rgba(0,0,0,0.2); transform: scale(0.9); transition: transform 0.3s ease; position: relative; width: 90%; max-width: 550px; text-align: left;}
+        .modal-overlay.show .modal-content { transform: scale(1); }
+
+        /* Loading Modal Content */
+        .modal-overlay #loadingContent .spinner { border: 6px solid #f3f3f3; border-top: 6px solid var(--primary-color); border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 0 auto 1.5rem auto; }
+        .modal-overlay #loadingContent { text-align: center; }
+        .modal-overlay h2 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+        .modal-overlay p { color: #7f8c8d; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Details & Appointment Modal Content */
+        .modal-close-btn { position: absolute; top: 15px; right: 20px; font-size: 2rem; color: #aaa; cursor: pointer; line-height: 1; }
+        .modal-close-btn:hover { color: #333; }
+        #providerDetailsModal h2, #confirmationModal h2 { margin-bottom: 1.5rem; }
+        .details-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 2rem; }
+        .details-item { font-size: 1rem; }
+        .details-item strong { display: block; color: var(--secondary-color); font-weight: 600; margin-bottom: 0.25rem; }
+        .details-item span { color: #555; }
+        #appointmentForm { display: none; }
+        #appointmentForm .input-group { margin-bottom: 1rem; }
+        #appointmentForm label { font-weight: 500; display: block; margin-bottom: 0.5rem; }
+        #appointmentForm input, #appointmentForm select { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ccc; font-family: var(--font-family); font-size: 0.95rem; }
+
+        /* Confirmation Modal Specifics */
+        #confirmationModal .modal-content { text-align: center; max-width: 450px; }
+        .success-icon { font-size: 4rem; color: #27ae60; margin-bottom: 1.5rem; }
+
+        /* Styling for permanent tooltips on the map */
+        .provider-tooltip { background-color: rgba(255, 255, 255, 0.9) !important; border: 1px solid var(--primary-color) !important; border-radius: 4px !important; box-shadow: var(--shadow) !important; padding: 6px 10px !important; font-size: 11px; font-family: var(--font-family); }
+        .provider-tooltip b { color: var(--secondary-color); font-weight: 600; }
+
+        @media (max-width: 992px) { .steps-container { flex-direction: column; align-items: center; gap: 2rem; } .step-arrow { transform: rotate(90deg); margin: 0; width: 3px; height: 40px; } }
+        @media (max-width: 768px) { .provider-grid { grid-template-columns: 1fr; } .details-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <nav class="navbar">
+                <a href="index.html" class="nav-logo"><i class="fas fa-network-wired"></i> Optimizer</a>
+                <div class="nav-right">
+                    <a href="index.html" class="nav-link">Home</a>
+                    <a href="map.html" class="nav-link">Map View</a>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="member-input-section">
+            <div class="container">
+                <h1>Find Your Top Providers</h1>
+                <p>Enter your Member ID to receive a ranked list of the highest-quality, most cost-effective providers, personalized for you.</p>
+                <div class="input-box">
+                    <input type="text" id="memberIdInput" placeholder="Enter Member ID (e.g., M123)">
+                    <button id="findProvidersBtn" class="btn btn-primary">Find Providers</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="results-section" class="results-section" style="display: none;">
+            <div class="container">
+                <h2>Your Top Recommended Providers</h2>
+                <div class="map-view-container">
+                    <div id="map"></div>
+                </div>
+                <div class="provider-grid" id="provider-results-grid"></div>
+            </div>
+        </section>
+
+        <section class="how-it-works-section">
+            <div class="container">
+                <h2>How It Works: A Simple 4-Step Process</h2>
+                <div class="steps-container">
+                    <div class="step-card"><div class="step-icon"><i class="fas fa-keyboard"></i></div><h3>1. Enter Your Input</h3><p>Start by entering a Member ID to begin the provider search.</p></div>
+                    <div class="step-arrow"></div>
+                    <div class="step-card"><div class="step-icon"><i class="fas fa-cogs"></i></div><h3>2. Run Analysis</h3><p>Our models rank nearby providers on quality, cost, and specialty match.</p></div>
+                    <div class="step-arrow"></div>
+                    <div class="step-card"><div class="step-icon"><i class="fas fa-list-check"></i></div><h3>3. Review Results</h3><p>See your top matches with clear scores and cost estimates.</p></div>
+                    <div class="step-arrow"></div>
+                    <div class="step-card"><div class="step-icon"><i class="fas fa-hand-pointer"></i></div><h3>4. Make Your Choice</h3><p>Use the data to choose the best provider for your needs.</p></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container"><div class="footer-bottom"><p>&copy; 2025 Network Optimizer. All Rights Reserved.</p></div></div>
+    </footer>
+
+    <!-- Loading Modal -->
+    <div id="loadingModal" class="modal-overlay">
+        <div class="modal-content" id="loadingContent">
+            <div class="spinner"></div>
+            <h2>Analyzing Providers</h2>
+            <p>Running our models to find your best match...</p>
+        </div>
+    </div>
+
+    <!-- Provider Details Modal -->
+    <div id="providerDetailsModal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="modal-close-btn">&times;</span>
+            <div id="providerInfo">
+                <h2 id="modal-provider-name">Provider Name</h2>
+                <div class="details-grid">
+                    <div class="details-item"><strong>Primary Specialty</strong><span id="modal-primary-spec"></span></div>
+                    <div class="details-item"><strong>Secondary Specialty</strong><span id="modal-secondary-spec"></span></div>
+                    <div class="details-item"><strong>Hospital</strong><span id="modal-hospital"></span></div>
+                    <div class="details-item"><strong>State</strong><span id="modal-state"></span></div>
+                    <div class="details-item"><strong>Address</strong><span id="modal-address"></span></div>
+                    <div class="details-item"><strong>Phone</strong><span id="modal-phone"></span></div>
+                    <div class="details-item"><strong>Rating</strong><span id="modal-rating"></span></div>
+                    <div class="details-item"><strong>Distance</strong><span id="modal-distance"></span></div>
+                </div>
+                <button class="btn btn-primary" id="showAppointmentFormBtn">Make an Appointment</button>
+            </div>
+            <div id="appointmentForm">
+                <h2>Book an Appointment</h2>
+                <form>
+                    <div class="input-group"><label for="appt-name">Your Name</label><input type="text" id="appt-name" required></div>
+                    <div class="input-group"><label for="appt-contact">Contact No.</label><input type="tel" id="appt-contact" required></div>
+                    <div class="input-group"><label for="appt-date">Preferred Date</label><input type="date" id="appt-date" required></div>
+                    <div class="input-group"><label for="appt-time">Preferred Time</label><input type="time" id="appt-time" required></div>
+                    <button type="submit" class="btn btn-primary" style="width:100%; margin-top: 1rem;">Confirm Appointment</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmationModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="success-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <h2>Appointment Confirmed!</h2>
+            <p>Your request has been sent. You will receive a confirmation shortly.</p>
+            <button class="btn btn-primary" id="closeConfirmationBtn" style="margin-top: 1.5rem; width: auto;">Done</button>
+        </div>
+    </div>
+
+
+    <script src="https://unpkg.com/leaflet@1.8.0/dist/leaflet.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // DOM Elements
+            const enterButton = document.getElementById('findProvidersBtn');
+            const memberIdInput = document.getElementById('memberIdInput');
+            const loadingModal = document.getElementById('loadingModal');
+            const resultsSection = document.getElementById('results-section');
+            const resultsGrid = document.getElementById('provider-results-grid');
+            const detailsModal = document.getElementById('providerDetailsModal');
+            const closeBtn = detailsModal.querySelector('.modal-close-btn');
+            const showAppointmentFormBtn = document.getElementById('showAppointmentFormBtn');
+            const appointmentForm = document.getElementById('appointmentForm');
+            const confirmationModal = document.getElementById('confirmationModal');
+            const closeConfirmationBtn = document.getElementById('closeConfirmationBtn');
+
+            let map = null;
+            let markers = [];
+            let currentProviders = [];
+
+            // MOCK BACKEND DATA
+            const mockApiData = {
+                "M123": {
+                    member_location: { lat: 40.7128, lon: -74.0060 },
+                    providers: [
+                        { provider_id: "P001", provider_name: "Dr. John Smith", primary_specialty: "Cardiology", secondary_specialty: "Internal Medicine", hospital_name: "NY General Hospital", phone_no: "212-555-0101", address: "123 Broadway, New York, NY", state: "NY", rating: 4.8, distance_km: 5.2, latitude: 40.7580, longitude: -73.9855 },
+                        { provider_id: "P002", provider_name: "Dr. Emily White", primary_specialty: "Dermatology", secondary_specialty: "Cosmetic Surgery", hospital_name: "Downtown Medical Group", phone_no: "212-555-0202", address: "456 Market St, New York, NY", state: "NY", rating: 4.7, distance_km: 2.1, latitude: 40.7145, longitude: -74.0081 },
+                        { provider_id: "P003", provider_name: "Dr. Michael Lee", primary_specialty: "Pediatrics", secondary_specialty: "Neonatology", hospital_name: "Big Apple Pediatrics", phone_no: "212-555-0303", address: "789 Park Ave, New York, NY", state: "NY", rating: 4.6, distance_km: 6.5, latitude: 40.7613, longitude: -73.9782 },
+                        { provider_id: "P004", provider_name: "Dr. Sarah Brown", primary_specialty: "Orthopedics", secondary_specialty: "Sports Medicine", hospital_name: "Midtown Orthopedics", phone_no: "212-555-0404", address: "101 Madison Ave, New York, NY", state: "NY", rating: 4.5, distance_km: 7.8, latitude: 40.7549, longitude: -73.9840 }
+                    ]
+                }
+            };
+
+            const handleFindProviders = () => {
+                const memberId = memberIdInput.value.trim();
+                if (!memberId) {
+                    memberIdInput.placeholder = "Please enter a Member ID!";
+                    memberIdInput.focus();
+                    return;
+                }
+                loadingModal.classList.add('show');
+                resultsGrid.innerHTML = '';
+
+                setTimeout(() => {
+                    const data = mockApiData[memberId];
+                    if (data) {
+                        currentProviders = data.providers.sort((a,b) => b.rating - a.rating);
+                        resultsSection.style.display = 'block';
+                        displayMap(currentProviders, data.member_location);
+                        displayProviders(currentProviders);
+                        resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    } else {
+                        resultsSection.style.display = 'block';
+                        resultsGrid.innerHTML = `<p style="text-align: center; grid-column: 1 / -1;">No data found for Member ID "${memberId}". Please try another ID (e.g., M123).</p>`;
+                        if (map) { map.remove(); map = null; }
+                        resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                    loadingModal.classList.remove('show');
+                }, 1500);
+            };
+
+            enterButton.addEventListener('click', handleFindProviders);
+            memberIdInput.addEventListener('keypress', (event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    handleFindProviders();
+                }
+            });
+
+            function displayProviders(providers) {
+                providers.forEach(provider => {
+                    const cardHTML = `
+                        <div class="provider-card" data-provider-id="${provider.provider_id}">
+                            <h3>${provider.provider_name}</h3>
+                            <span class="specialty">${provider.primary_specialty}</span>
+                            <div class="info-grid">
+                                <div class="info-item"><i class="fas fa-star"></i><span>Rating: <b>${provider.rating} / 5.0</b></span></div>
+                                <div class="info-item"><i class="fas fa-route"></i><span>${provider.distance_km.toFixed(1)} km away</span></div>
+                                <div class="info-item"><i class="fas fa-hospital"></i><span>${provider.hospital_name}</span></div>
+                            </div>
+                        </div>`;
+                    resultsGrid.innerHTML += cardHTML;
+                });
+            }
+
+            function displayMap(providers, memberLocation) {
+                if (!map) {
+                    map = L.map('map').setView([memberLocation.lat, memberLocation.lon], 10);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
+                }
+
+                setTimeout(() => map.invalidateSize(), 10);
+
+                markers.forEach(marker => map.removeLayer(marker));
+                markers = [];
+
+                const memberIcon = L.icon({ iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png', shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png', iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41] });
+                const memberMarker = L.marker([memberLocation.lat, memberLocation.lon], { icon: memberIcon }).addTo(map);
+                memberMarker.bindPopup("<b>Your Location</b>");
+                markers.push(memberMarker);
+
+                const bounds = [[memberLocation.lat, memberLocation.lon]];
+                providers.forEach(p => {
+                    const marker = L.marker([p.latitude, p.longitude]).addTo(map);
+
+                    const tooltipContent = `<b>${p.provider_name}</b><br>${p.primary_specialty}<br>${p.hospital_name}`;
+                    marker.bindTooltip(tooltipContent, {
+                        permanent: true,
+                        direction: 'top',
+                        offset: [0, -10],
+                        className: 'provider-tooltip'
+                    });
+
+                    markers.push(marker);
+                    bounds.push([p.latitude, p.longitude]);
+                });
+                if (bounds.length > 1) map.fitBounds(bounds, { padding: [50, 50] });
+                else map.setView(bounds[0], 13);
+            }
+
+            // --- Modal Logic ---
+            resultsGrid.addEventListener('click', (event) => {
+                const card = event.target.closest('.provider-card');
+                if (card) {
+                    const providerId = card.dataset.providerId;
+                    const provider = currentProviders.find(p => p.provider_id === providerId);
+                    if (provider) {
+                        openDetailsModal(provider);
+                    }
+                }
+            });
+
+            function openDetailsModal(provider) {
+                document.getElementById('providerInfo').style.display = 'block';
+                appointmentForm.style.display = 'none';
+                appointmentForm.querySelector('form').reset();
+
+                document.getElementById('modal-provider-name').textContent = provider.provider_name;
+                document.getElementById('modal-primary-spec').textContent = provider.primary_specialty;
+                document.getElementById('modal-secondary-spec').textContent = provider.secondary_specialty;
+                document.getElementById('modal-hospital').textContent = provider.hospital_name;
+                document.getElementById('modal-state').textContent = provider.state;
+                document.getElementById('modal-address').textContent = provider.address;
+                document.getElementById('modal-phone').textContent = provider.phone_no;
+                document.getElementById('modal-rating').textContent = `${provider.rating} / 5.0`;
+                document.getElementById('modal-distance').textContent = `${provider.distance_km.toFixed(1)} km away`;
+
+                detailsModal.classList.add('show');
+            }
+
+            closeBtn.addEventListener('click', () => detailsModal.classList.remove('show'));
+            detailsModal.addEventListener('click', (event) => {
+                if (event.target === detailsModal) {
+                    detailsModal.classList.remove('show');
+                }
+            });
+
+            showAppointmentFormBtn.addEventListener('click', () => {
+                document.getElementById('providerInfo').style.display = 'none';
+                appointmentForm.style.display = 'block';
+            });
+
+            appointmentForm.querySelector('form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                detailsModal.classList.remove('show');
+                setTimeout(() => {
+                    confirmationModal.classList.add('show');
+                }, 300);
+            });
+
+            // --- Confirmation Modal Close Logic ---
+            closeConfirmationBtn.addEventListener('click', () => confirmationModal.classList.remove('show'));
+            confirmationModal.addEventListener('click', (event) => {
+                if (event.target === confirmationModal) {
+                    confirmationModal.classList.remove('show');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
